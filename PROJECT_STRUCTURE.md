@@ -103,7 +103,7 @@
 | `data/calibration_images/` | 存放用于标定的双目原始图对（`left_01.png`~`left_12.png`、`right_01.png`~`right_12.png`）。 |
 | `data/calibration_results/` | 标定产物缓存（角点标注图集 `corner_visualizations/`、高速查找表 `stereo_calib_params.npz`）。 |
 | `data/simulation/` | Blender 仿真渲染生成的测试帧（`probe_test_01_L.png`, `probe_test_01_R.png`）及绝对真值 `probe_ground_truth.json`。 |
-| `data/output/` | 算法解算结果：<br>• `tracking_verification.png`（追踪 HUD 标注图）；<br>• `disparity_result.png`（视差图）；<br>• `depth_map.png`（彩色物理深度图）；<br>• `classroom_pointcloud.ply`（3D 空间彩色点云文件）。 |
+| `data/output/` | 算法解算结果标准化子目录：<br>• `depth/`：彩色物理深度图 `classroom_depth.png`、原始浮点深度矩阵 `classroom_depth_raw.npy`、单目灰度图 `classroom_gray.png`；<br>• `disparity/`：WLS 保边滤波高精度视差图 `classroom_disparity.png`；<br>• `pointcloud/`：三维彩色空间点云 `classroom_pointcloud.ply`、多视角全景大图 `classroom_pointcloud_preview.png`；<br>• `tracking/`：手术导航针尖追踪轨迹与验证图 `tracking_verification.png`；<br>• `debug/`：算法演进历史草稿与调参对比图（`test_direct_disp`、`_optimized`、`_perfect` 等）。 |
 
 ---
 

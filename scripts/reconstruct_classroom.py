@@ -11,7 +11,11 @@ except Exception:
     PROJECT_ROOT = Path(os.getcwd())
 
 out_dir = PROJECT_ROOT / "data" / "output"
-os.makedirs(out_dir, exist_ok=True)
+depth_dir = out_dir / "depth"
+disparity_dir = out_dir / "disparity"
+pointcloud_dir = out_dir / "pointcloud"
+for d in [depth_dir, disparity_dir, pointcloud_dir]:
+    os.makedirs(d, exist_ok=True)
 
 left_path = str(PROJECT_ROOT / "data" / "blender_sim" / "0001_L.png")
 right_path = str(PROJECT_ROOT / "data" / "blender_sim" / "0001_R.png")
@@ -29,8 +33,8 @@ if img_l is None or img_r is None:
 # 1. 保存单目灰度图
 gray_l = cv2.cvtColor(img_l, cv2.COLOR_BGR2GRAY)
 gray_r = cv2.cvtColor(img_r, cv2.COLOR_BGR2GRAY)
-cv2.imwrite(str(out_dir / "classroom_gray.png"), gray_l)
-print("  [1/4] 灰度图已就绪: data/output/classroom_gray.png")
+cv2.imwrite(str(depth_dir / "classroom_gray.png"), gray_l)
+print(f"  [1/4] 灰度图已就绪: {depth_dir / 'classroom_gray.png'}")
 
 # 2. 真实几何参数 (Blender 渲染摄像机实际参数)
 # 焦距 f = 25mm, 传感器尺寸 32mm, 分辨率 1280x1024
@@ -64,6 +68,16 @@ disp_r = right_matcher.compute(gray_r, gray_l)
 disp_wls = wls.filter(disp_l, gray_l, disparity_map_right=disp_r)
 disp = disp_wls.astype(np.float32) / 16.0
 
+# 保存高精度 WLS 视差图可视化 (-32px ~ +64px)
+valid_disp = disp > -31
+norm_disp = np.zeros_like(disp, dtype=np.uint8)
+norm_disp[valid_disp] = np.clip((disp[valid_disp] - (-32.0)) / (64.0 - (-32.0)) * 255.0, 0, 255).astype(np.uint8)
+colored_disp = cv2.applyColorMap(norm_disp, cv2.COLORMAP_TURBO)
+colored_disp[~valid_disp] = [0, 0, 0]
+disp_save_path = str(disparity_dir / "classroom_disparity.png")
+cv2.imwrite(disp_save_path, colored_disp)
+print(f"  [2.5/4] 高精度 WLS 视差图已保存: {disp_save_path}")
+
 # 4. 基于离轴收敛几何解算物理绝对深度: 1/Z = 1/Z_conv + disp / (f * B)
 print("  [3/4] 解算物理绝对深度 (Metric Depth Map in meters)...")
 valid = disp > -31
@@ -79,9 +93,14 @@ norm_depth[valid_range] = np.clip((depth_m[valid_range] - 0.5) / (9.0 - 0.5) * 2
 colored_depth = cv2.applyColorMap(norm_depth, cv2.COLORMAP_TURBO)
 colored_depth[~valid_range] = [0, 0, 0]
 
-depth_save_path = str(out_dir / "classroom_depth_map.png")
+depth_save_path = str(depth_dir / "classroom_depth.png")
 cv2.imwrite(depth_save_path, colored_depth)
-print(f"  [√] 完美消除黑洞！全覆盖真实深度图已保存: {depth_save_path}")
+cv2.imwrite(str(depth_dir / "classroom_depth_map.png"), colored_depth)
+# 保存科研级真实浮点深度矩阵 (单位: 米)
+raw_depth_path = str(depth_dir / "classroom_depth_raw.npy")
+np.save(raw_depth_path, depth_m.astype(np.float32))
+print(f"  [√] 物理深度图已保存: {depth_save_path}")
+print(f"  [√] 原始真实浮点深度矩阵已保存: {raw_depth_path}")
 
 # 5. 反投影生成 3D 空间彩色点云 (PLY)
 print("  [4/4] 生成三维空间彩色点云 (PLY)...")
@@ -96,7 +115,7 @@ pts_y = (grid_y[valid_range] - cy) * pts_z / f_px
 points = np.stack([pts_x, pts_y, pts_z], axis=1)
 colors = img_l[valid_range][:, [2, 1, 0]] # BGR -> RGB
 
-ply_path = str(out_dir / "classroom_pointcloud.ply")
+ply_path = str(pointcloud_dir / "classroom_pointcloud.ply")
 pts_to_save = points[::2]
 cols_to_save = colors[::2]
 with open(ply_path, "w") as f:
@@ -142,7 +161,7 @@ ax2.set_ylabel("Depth Z (m)", color="gray")
 ax2.tick_params(colors="gray")
 
 plt.tight_layout()
-preview_path = str(out_dir / "classroom_pointcloud_preview.png")
+preview_path = str(pointcloud_dir / "classroom_pointcloud_preview.png")
 plt.savefig(preview_path, facecolor=fig.get_facecolor(), edgecolor="none")
 plt.close()
 print(f"  [√] 3D 点云可视化大图已生成: {preview_path}\n")

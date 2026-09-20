@@ -36,6 +36,10 @@ venv.bak/
 # Project specific
 data/raw/
 data/cache/
+blender_assets/
+*.blend
+*.blend1
 *.ply
 *.pcd
 *.log
+

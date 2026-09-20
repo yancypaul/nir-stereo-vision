@@ -5,27 +5,11 @@ __pycache__/
 *.so
 .Python
 env/
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual Environments
 venv/
 ENV/
-env.bak/
-venv.bak/
+*.egg-info/
+dist/
+build/
 
 # IDEs
 .vscode/
@@ -33,13 +17,21 @@ venv.bak/
 *.swp
 *.swo
 
-# Project specific
-data/raw/
-data/cache/
-blender_assets/
+# Blender & Heavy 3D Assets
 *.blend
 *.blend1
 *.ply
 *.pcd
-*.log
+*.obj
+*.mtl
+blender_assets/classroom/
 
+# Data & Cache (Keep repo lightweight < 1MB)
+data/calibration_images/
+data/calibration_results/*.npz
+data/calibration_results/corner_visualizations/
+data/simulation/
+data/output/
+data/blender_sim/
+*.npz
+*.log

@@ -1,0 +1,11 @@
+{
+  "camera_type": "Mock_Stereo_Camera",
+  "description": "离线仿真/回放双目相机配置 (宿舍开发专用)",
+  "source_mode": "image_directory",
+  "image_directory": "data/simulation",
+  "left_pattern": "*_L.png",
+  "right_pattern": "*_R.png",
+  "fps": 30.0,
+  "loop": true
+}
+

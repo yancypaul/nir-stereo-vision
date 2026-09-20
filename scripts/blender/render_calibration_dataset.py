@@ -1,6 +1,20 @@
 import bpy
 import os
 import math
+from pathlib import Path
+
+# 自动推导工程根目录 (从 scripts/blender/ 向上两级)
+try:
+    SCRIPT_PATH = Path(__file__).resolve()
+    PROJECT_ROOT = SCRIPT_PATH.parents[2]
+except Exception:
+    PROJECT_ROOT = Path(os.getcwd())
+
+out_dir = str(PROJECT_ROOT / "data" / "calibration_images")
+tex_path = str(PROJECT_ROOT / "blender_assets" / "calibration_board" / "chessboard_11x9_20mm.png")
+studio_blend = str(PROJECT_ROOT / "blender_assets" / "calibration_board" / "calibration_studio.blend")
+
+os.makedirs(out_dir, exist_ok=True)
 
 # 1. 创建纯净标定环境
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -14,9 +28,6 @@ scene.render.resolution_x = 1280
 scene.render.resolution_y = 960
 scene.render.resolution_percentage = 100
 scene.render.image_settings.color_mode = 'BW'
-
-out_dir = r"H:\antigravity\stereo vision\data\calibration_images"
-os.makedirs(out_dir, exist_ok=True)
 
 # 纯色背景
 world = bpy.data.worlds.new('CleanStudioWorld')
@@ -55,7 +66,6 @@ board.scale = (0.28, 0.24, 1.0)
 bpy.ops.object.transform_apply(scale=True)
 
 # 赋予黑白棋盘格材质
-tex_path = r'H:\antigravity\stereo vision\blender_assets\calibration_board\chessboard_11x9_20mm.png'
 mat = bpy.data.materials.new('ChessboardMaterial')
 mat.use_nodes = True
 bsdf = mat.node_tree.nodes.get('Principled BSDF')
@@ -66,7 +76,7 @@ bsdf.inputs['Roughness'].default_value = 0.6
 board.data.materials.append(mat)
 
 # 保存 .blend 文件供用户随时在 Blender 里打开查看
-studio_blend = r'H:\antigravity\stereo vision\blender_assets\calibration_board\calibration_studio.blend'
+os.makedirs(os.path.dirname(studio_blend), exist_ok=True)
 bpy.ops.wm.save_as_mainfile(filepath=studio_blend)
 
 # 12 组真实的标定板空间姿态 (倾斜、俯仰、微旋、远近、偏角)
@@ -86,8 +96,6 @@ poses = [
 ]
 
 print(f">>> 开始批量渲染 {len(poses)} 组双目标定图片对 (纯净背景 + 亚像素棋盘格)...")
-
-right_vec = (1.0, 0.0, 0.0) # 水平 X 轴为相机平移方向
 
 for i, (px, py, pz, r_x, r_y, r_z) in enumerate(poses, start=1):
     board.location = (px, py, pz)

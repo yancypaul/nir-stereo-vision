@@ -1,0 +1,30 @@
+{
+  "tool_name": "Surgical_Probe_4Marker",
+  "description": "四球反光标记点刚体手术探针 (NDI Polaris / 骨科导航几何结构)",
+  "marker_diameter_mm": 12.0,
+  "markers": [
+    {
+      "id": 1,
+      "name": "Base_Marker",
+      "position_local_mm": [0.0, 0.0, 0.0]
+    },
+    {
+      "id": 2,
+      "name": "Right_Marker",
+      "position_local_mm": [45.0, 30.0, 0.0]
+    },
+    {
+      "id": 3,
+      "name": "Left_Marker",
+      "position_local_mm": [-45.0, 30.0, 0.0]
+    },
+    {
+      "id": 4,
+      "name": "Elevated_Marker",
+      "position_local_mm": [0.0, 70.0, 15.0]
+    }
+  ],
+  "tool_tip_offset_mm": [0.0, 150.0, -10.0],
+  "max_fre_threshold_mm": 2.0
+}
+

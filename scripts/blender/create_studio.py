@@ -1,6 +1,19 @@
 import bpy
 import os
 import math
+from pathlib import Path
+
+# 自动推导工程根目录 (从 scripts/blender/ 向上两级)
+try:
+    SCRIPT_PATH = Path(__file__).resolve()
+    PROJECT_ROOT = SCRIPT_PATH.parents[2]
+except Exception:
+    PROJECT_ROOT = Path(os.getcwd())
+
+board_asset_dir = PROJECT_ROOT / "blender_assets" / "calibration_board"
+obj_path = str(board_asset_dir / "calibration_board_11x9_20mm.obj")
+tex_img_path = str(board_asset_dir / "chessboard_11x9_20mm.png")
+out_blend = str(board_asset_dir / "calibration_studio.blend")
 
 # 1. 清空默认物体，创建全新空场景
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -38,7 +51,7 @@ scene.collection.objects.link(light_obj)
 light_obj.location = (0, -0.6, 1.0)
 light_obj.rotation_euler = (math.radians(35), 0, 0)
 
-# 5. 放置双目主相机 (60mm 基线，8mm 镜头，距离标定板约 0.7 米，让标定板占画面 50% 左右)
+# 5. 放置双目主相机 (60mm 基线，8mm 镜头，距离标定板约 0.7 米)
 cam_data = bpy.data.cameras.new(name='StereoCam')
 cam_data.lens = 8.0 # 8mm 镜头
 cam_data.sensor_width = 7.2 # 1/1.8" 传感器尺寸
@@ -49,39 +62,37 @@ cam_obj = bpy.data.objects.new(name='StereoCamera', object_data=cam_data)
 scene.collection.objects.link(cam_obj)
 scene.camera = cam_obj
 
-cam_obj.location = (0, -0.70, 0) # 0.70米拍摄距离，棋盘格清晰填满画面
+cam_obj.location = (0, -0.70, 0) # 0.70米拍摄距离
 cam_obj.rotation_euler = (math.radians(90), 0, 0)
 
 # 6. 导入专属 11x9 20mm 标定板
-obj_path = r'H:\antigravity\stereo vision\blender_assets\calibration_board\calibration_board_11x9_20mm.obj'
-bpy.ops.wm.obj_import(filepath=obj_path)
+if os.path.exists(obj_path):
+    bpy.ops.wm.obj_import(filepath=obj_path)
+    board = None
+    for obj in scene.collection.objects:
+        if 'CalibrationBoard' in obj.name:
+            board = obj
+            board.location = (0, 0, 0)
+            board.rotation_euler = (math.radians(90), 0, 0)
+            break
 
-board = None
-for obj in scene.collection.objects:
-    if 'CalibrationBoard' in obj.name:
-        board = obj
-        board.location = (0, 0, 0)
-        board.rotation_euler = (math.radians(90), 0, 0)
-        break
+    # 7. 为标定板绑定 Cycles 材质与贴图
+    mat = bpy.data.materials.new(name='BoardShaderMat')
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
 
-# 7. 为标定板绑定 Cycles 材质与棋盘格贴图节点 (确保黑白棋盘格 100% 渲染显示)
-tex_img_path = r'H:\antigravity\stereo vision\blender_assets\calibration_board\chessboard_11x9_20mm.png'
-mat = bpy.data.materials.new(name='BoardShaderMat')
-mat.use_nodes = True
-nodes = mat.node_tree.nodes
-links = mat.node_tree.links
+    bsdf = nodes.get('Principled BSDF')
+    tex_node = nodes.new('ShaderNodeTexImage')
+    tex_node.image = bpy.data.images.load(tex_img_path)
+    links.new(tex_node.outputs['Color'], bsdf.inputs['Base Color'])
+    bsdf.inputs['Roughness'].default_value = 0.8
 
-bsdf = nodes.get('Principled BSDF')
-tex_node = nodes.new('ShaderNodeTexImage')
-tex_node.image = bpy.data.images.load(tex_img_path)
-links.new(tex_node.outputs['Color'], bsdf.inputs['Base Color'])
-bsdf.inputs['Roughness'].default_value = 0.8 # 哑光表面
-
-if board:
-    board.data.materials.clear()
-    board.data.materials.append(mat)
+    if board:
+        board.data.materials.clear()
+        board.data.materials.append(mat)
 
 # 8. 保存工程
-out_blend = r'H:\antigravity\stereo vision\blender_assets\calibration_board\calibration_studio.blend'
+os.makedirs(os.path.dirname(out_blend), exist_ok=True)
 bpy.ops.wm.save_as_mainfile(filepath=out_blend)
-print('>>> Clean Studio Blend saved successfully!')
+print(f'>>> Clean Studio Blend saved successfully to: {out_blend}')

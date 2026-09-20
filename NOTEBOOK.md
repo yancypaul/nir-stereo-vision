@@ -13,6 +13,8 @@
 5. [Q5: 深度图为什么曾经出现大面积“桌椅全黑”？两大底层物理陷阱排查复盘](#q5-深度图为什么曾经出现大面积桌椅全黑两大底层物理陷阱排查复盘)
 6. [Q6: `classroom_depth_*` 调试演进的各个图版本区别与效果对比](#q6-classroom_depth_-调试演进的各个图版本区别与效果对比)
 7. [Q7: 什么是双目立体视觉的“收敛面（Convergence Plane）”？为什么它会导致常规算法崩溃？](#q7-什么是双目立体视觉的收敛面convergence-plane为什么它会导致常规算法崩溃)
+8. [Q8: 三维点云 `.ply` 格式是什么？有哪些专用软件可以打开并进行交互式漫游？](#q8-三维点云-ply-格式是什么有哪些专用软件可以打开并进行交互式漫游)
+9. [Q9: 点云导入 CloudCompare 提示 `[PLY] 'Unexpected end of file'` 是什么原因？](#q9-点云导入-cloudcompare-提示-ply-unexpected-end-of-file-是什么原因)
 
 ---
 
@@ -93,10 +95,40 @@
 
 ### Q6: `classroom_depth_*` 调试演进的各个图版本区别与效果对比
 
-| 图像文件名 | 核心改动 | 表现特征与不足 |
+* **输入数据源**：同一组双目图像 `data/blender_sim/0001_L.png` 与 `0001_R.png`（Blender 教室仿真，焦距 25mm，基线 65mm）。
+* **四大演进阶段与算法程序全景**：
+  1. **第一阶段：初次排查极线错位（`classroom_depth_optimized.png`）**
+     - **对应程序**：初始版本 `scripts/reconstruct_classroom.py`；
+     - **核心操作**：去掉了之前错误的 8mm 畸变映射（修正了垂直 30px 错位），但保留了标准的 `cv2.StereoSGBM_create(minDisparity=0, numDisparities=64)`；
+     - **为什么大面积红黑噪斑**：当时尚未发现 Blender 相机存在 1.95m 收敛面。整间教室 1.95m 以后的所有课桌与黑板在物理上全为负视差（$-10 \sim -25$px），算法强制只在正数区间搜索，导致完全失配。
+  2. **第二阶段：左右颠倒与盲目调参（`_correct` / `_wide` / `_320.png`）**
+     - **对应程序**：测试脚本；
+     - **核心操作**：尝试反转左右眼输入（左眼当右眼），并将视差搜索窗口激进扩大至 128（`_wide`）乃至 320（`_320`）；
+     - **效果与致命缺陷**：后排黑板算出来了（负视差反转成了正视差），但近处前排课桌被挖出了巨大的死黑空洞（原本的正视差被反转成了超出极限的负视差），左侧同时留下 320px 宽的无效黑边。
+  3. **第三阶段：物理本质破局（`classroom_depth_perfect.png`）**
+     - **对应程序**：`scripts/reconstruct_classroom.py` 物理模型修正版；
+     - **算法突破**：
+       - 恢复正常的左右眼输入；
+       - 开放双向跨零视差搜索：`minDisparity = -32, numDisparities = 96`（覆盖范围 $[-32, +64]$）；
+       - 深度测距升级为带收敛面模型：$\frac{1}{Z} = \frac{1}{Z_{conv}} + \frac{d}{f \cdot B}$；
+     - **效果**：**所有黑洞 100% 消除！** 前排课桌到黑板全域覆盖，有效覆盖率飙升至 **95.2%**，仅桌面上存留少许微小散斑。
+  4. **第四阶段：最终工业级成品（`classroom_depth_map_final.png` 与 `classroom_depth_map.png`）**
+     - **对应程序**：最新版 `scripts/reconstruct_classroom.py`；
+     - **引入算法**：**WLS 双向加权最小二乘视差滤波器 + 左右一致性校验**：
+       ```python
+       left_matcher = cv2.StereoSGBM_create(...)
+       right_matcher = cv2.ximgproc.createRightMatcher(left_matcher)
+       wls_filter = cv2.ximgproc.createDisparityWLSFilter(left_matcher)
+       wls_filter.setLambda(8000.0)
+       wls_filter.setSigmaColor(1.5)
+       filtered_disp = wls_filter.filter(disp_l, img_l, disparity_map_right=disp_r)
+       ```
+     - **效果**：**桌面如镜面般平滑，椅背与吊灯边缘刀削般锐利**，覆盖率 $>95.2\%$，为当前工程最优成果。
+
+| 图像文件名 | 核心改动 | 表现特征与底层原因 |
 | :--- | :--- | :--- |
-| `classroom_depth_optimized.png` | 去除错误的 8mm 畸变映射 | 依然使用 `minDisparity=0`，中远距离桌椅未覆盖，红黑色杂乱大块。 |
-| `classroom_depth_correct.png`<br>`_wide.png` / `_320.png` | 尝试反转左右眼，盲目拉大视差搜索窗口至 320 | 后方黑板出来了，但近处前排课桌被强行挖出巨大黑洞（视差正负颠倒超限）。 |
+| `classroom_depth_optimized.png` | 去除错误的 8mm 畸变映射 | 依然使用 `minDisparity=0`，搜不到负视差，红黑色杂乱大块。 |
+| `classroom_depth_correct.png`<br>`_wide.png` / `_320.png` | 尝试反转左右眼，盲目拉大视差搜索窗口至 320 | 后方黑板出来了，但近处前排课桌被强行挖出巨大黑洞。 |
 | `classroom_depth_perfect.png` | **物理机制突破**：引入 1.95m 收敛面几何，开放 `-32 ~ +64` 视差 | **所有黑洞 100% 消除！所有桌椅全部显现**，但桌面上带有微小散斑毛刺。 |
 | **`classroom_depth_map_final.png`**<br>(即默认 `classroom_depth_map.png`) | **最终工业级成品**：在 `perfect` 基础上叠加 **WLS 左右一致性加权滤波** | **效果最完美**：光滑桌面如丝般平整细腻，椅背与吊灯边缘刀削般锋利，色彩景深还原极佳。 |
 
@@ -125,4 +157,42 @@
        $$d = f \cdot B \cdot \left( \frac{1}{Z} - \frac{1}{Z_{conv}} \right) \implies \frac{1}{Z} = \frac{1}{Z_{conv}} + \frac{d}{f \cdot B}$$
      - 解决方案：必须把 OpenCV 的搜索起点拉入负数域（如 `minDisparity = -32`），让算法允许跨越正负搜索，黑洞便彻底迎刃而解！
 
+---
 
+### Q8: 三维点云 `.ply` 格式是什么？有哪些专用软件可以打开并进行交互式漫游？
+
+* **文件格式科普**：
+  - `.ply`（Polygon File Format 或 Stanford Triangle Format）是斯坦福大学开发的工业与学术界通用的 3D 点云与三维网格标准文件格式。
+  - 本工程输出的 `data/output/classroom_pointcloud.ply` 包含 **121 万个稠密空间三维坐标点（X, Y, Z）** 以及对应的 **真彩色通道（R, G, B）**。
+* **推荐的专业点云查看与分析软件**：
+  1. **CloudCompare（⭐⭐⭐⭐⭐ 行业第一首选 / 强烈推荐）**：
+     - **性质**：完全免费、开源、极度轻量且性能强悍（C++ 编写，专为数亿级点云打造）。
+     - **优势**：支持 360° 丝滑旋转缩放、空间距离测量（测两张桌子间距）、点云滤波、法向量计算、点云切片截面观察。
+     - **使用方法**：直接将 `.ply` 文件拖入软件主界面，点击 `Apply All` 即可看到完整的真彩色 3D 教室。
+     - **官网下载**：[cloudcompare.org](https://www.danielgm.net/cc/)
+  2. **MeshLab（⭐⭐⭐⭐ 经典开源网格与点云处理工具）**：
+     - **性质**：意大利国家研究委员会开发的开源 3D 工具。
+     - **优势**：点云查看、三角面重建（如泊松重建 Poisson Surface Reconstruction，把点云变成实体曲面模型）。
+  3. **Blender（⭐⭐⭐⭐ 本机已有，无需下载新软件）**：
+     - **操作步骤**：
+       1. 顶部菜单 `File` -> `Import` -> `Stanford PLY (.ply)`；
+       2. 找到并选择 `data/output/classroom_pointcloud.ply`；
+       3. 视图右上角切换到材质预览（Material Preview）或按快捷键 `Z` 选择渲染模式，即可在 3D 视口中自由漫游。
+  4. **VS Code 插件快速预览**：
+     - 在 VS Code 插件市场搜索安装 `3D Viewer for VSCode`，在左侧文件树直接点击 `.ply` 文件即可在代码编辑器内部 3D 旋转预览。
+
+---
+
+### Q9: 点云导入 CloudCompare 提示 `[PLY] 'Unexpected end of file'` 是什么原因？
+
+* **报错现象**：把生成的 `.ply` 拖入 CloudCompare 时弹出致命错误弹窗：`[PLY] 'Unexpected end of file'`。
+* **底层原因（工业级严谨校验）**：
+  - VS Code 或部分轻量预览器对文件规范非常宽松，读到文件末尾（EOF）就停止；
+  - 但 **CloudCompare 是严谨的工业级点云软件**，它在读取 `.ply` 时会首先解析文件头的元数据：
+    ```text
+    element vertex 1212416
+    ```
+  - 当时生成脚本在循环写入时使用了降采样切片 `for p, c in zip(points[::2], colors[::2]):`，实际只输出了 606,208 行数据；
+  - CloudCompare 读完第 606,208 行发现文件已经到底，与文件头承诺的 121 万个点不匹配，因此触发了严格的校验断言：**“意外到达文件末尾 (Unexpected end of file)”**。
+* **彻底解决**：
+  - 将 PLY 头部的 `element vertex` 数量严格绑定为实际写入的数组长度 `len(pts_to_save)`（606,208 个点），元数据与数据体 100% 精确对齐，CloudCompare 瞬间秒读通过。

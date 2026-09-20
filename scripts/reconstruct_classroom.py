@@ -97,16 +97,18 @@ points = np.stack([pts_x, pts_y, pts_z], axis=1)
 colors = img_l[valid_range][:, [2, 1, 0]] # BGR -> RGB
 
 ply_path = str(out_dir / "classroom_pointcloud.ply")
+pts_to_save = points[::2]
+cols_to_save = colors[::2]
 with open(ply_path, "w") as f:
     f.write("ply\nformat ascii 1.0\n")
-    f.write(f"element vertex {len(points)}\n")
+    f.write(f"element vertex {len(pts_to_save)}\n")
     f.write("property float x\nproperty float y\nproperty float z\n")
     f.write("property uchar red\nproperty uchar green\nproperty uchar blue\n")
     f.write("end_header\n")
-    for p, c in zip(points[::2], colors[::2]): # 降采样存储，兼顾轻量与高密
+    for p, c in zip(pts_to_save, cols_to_save): # 降采样存储，兼顾轻量与高密
         f.write(f"{p[0]:.3f} {p[1]:.3f} {p[2]:.3f} {c[0]} {c[1]} {c[2]}\n")
 
-print(f"  [√] 包含 {len(points)} 个真实三维点的空间点云已保存: {ply_path}")
+print(f"  [√] 包含 {len(pts_to_save)} 个真实三维点的空间点云已保存: {ply_path}")
 
 # 6. 生成多视角 3D 点云渲染预览图
 print(">>> 正在生成 3D 点云多重视角高清预览图...")

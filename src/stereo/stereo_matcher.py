@@ -95,6 +95,42 @@ class StereoVisionPipeline:
 
         return disparity
 
+    def compute_depth_map(self, disparity: np.ndarray) -> np.ndarray:
+        """
+        利用标定参数计算真实物理深度图 (单位: 毫米 mm)
+        Z = (f * B) / disparity
+        """
+        # 从 Q 矩阵提取焦距 f 和基线 B
+        # Q[2, 3] = f, Q[3, 2] = -1/B
+        f = abs(self.Q[2, 3])
+        B = abs(1.0 / self.Q[3, 2]) if self.Q[3, 2] != 0 else 60.0
+
+        depth_mm = np.zeros_like(disparity, dtype=np.float32)
+        valid_mask = disparity > 0.1
+        depth_mm[valid_mask] = (f * B) / disparity[valid_mask]
+        return depth_mm
+
+    def visualize_depth_map(
+        self,
+        depth_map: np.ndarray,
+        min_depth_mm: float = 300.0,
+        max_depth_mm: float = 2000.0
+    ) -> np.ndarray:
+        """
+        将真实毫米深度图映射为直观的可视化彩虹热力图 (近处暖色，远处冷色，无效区域黑色)
+        """
+        valid_mask = (depth_map >= min_depth_mm) & (depth_map <= max_depth_mm)
+        norm_depth = np.zeros_like(depth_map, dtype=np.uint8)
+
+        # 归一化有效深度至 0~255
+        clipped = np.clip(depth_map, min_depth_mm, max_depth_mm)
+        norm_depth[valid_mask] = (255.0 * (clipped[valid_mask] - min_depth_mm) / (max_depth_mm - min_depth_mm)).astype(np.uint8)
+
+        # 应用 Turbo / Jet 伪彩色
+        colored_depth = cv2.applyColorMap(norm_depth, cv2.COLORMAP_TURBO)
+        colored_depth[~valid_mask] = [0, 0, 0] # 无效区域涂黑
+        return colored_depth
+
     def disparity_to_pointcloud(self, disparity, rgb_img=None, max_depth_m=8.0):
         """
         利用 Q 矩阵反投影生成 3D 空间点云 (X, Y, Z, R, G, B)

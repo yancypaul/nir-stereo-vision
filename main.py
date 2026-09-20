@@ -127,11 +127,25 @@ def cmd_reconstruct(args):
     output_dir = PROJECT_ROOT / "data" / "output"
     os.makedirs(output_dir, exist_ok=True)
 
+    # 3. 计算真实毫米深度图 (Metric Depth Map)
+    print("3. 正在计算物理深度图 (Metric Depth Map in mm)...")
+    depth_mm = pipeline.compute_depth_map(disparity)
+    valid_depths = depth_mm[depth_mm > 0]
+    if len(valid_depths) > 0:
+        print(f"  有效深度范围: {valid_depths.min():.1f} mm ~ {valid_depths.max():.1f} mm (中位数: {np.median(valid_depths):.1f} mm)")
+
+    depth_vis = pipeline.visualize_depth_map(depth_mm, min_depth_mm=400, max_depth_mm=1500)
+    depth_save_path = str(output_dir / "depth_map.png")
+    cv2.imwrite(depth_save_path, depth_vis)
+    print(f"  彩色物理深度图已保存: {depth_save_path}")
+
     disp_save_path = str(output_dir / "disparity_result.png")
     disp_vis = cv2.normalize(disparity, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
     cv2.imwrite(disp_save_path, cv2.applyColorMap(disp_vis, cv2.COLORMAP_JET))
-    print(f"  视差图已保存: {disp_save_path}")
+    print(f"  视差热力图已保存: {disp_save_path}")
 
+    # 4. 生成 3D 空间点云 (PLY)
+    print("4. 正在生成 3D 空间彩色点云...")
     ply_save_path = str(output_dir / (args.output_ply or "reconstructed_pointcloud.ply"))
     points, colors = pipeline.disparity_to_pointcloud(disparity, rect_l, max_depth_m=10.0)
     pipeline.save_ply(ply_save_path, points, colors)

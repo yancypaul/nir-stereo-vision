@@ -1,0 +1,31 @@
+{
+  "archive_name": "20260922_classroom_131w_calibrated",
+  "created_at": "2026-09-22T01:03:00+08:00",
+  "scene": "Blender 5.2.2 LTS Classroom Simulation",
+  "camera_rig": {
+    "camera_name": "renderCam (Off-axis Stereo with Left Pivot)",
+    "lens_focal_length_mm": 25.0,
+    "sensor_width_mm": 32.0,
+    "resolution": [1280, 1024],
+    "interocular_baseline_m": 0.065,
+    "convergence_distance_m": 1.95,
+    "pivot": "LEFT",
+    "effective_f_px": 1000.0
+  },
+  "stereo_matching": {
+    "algorithm": "StereoSGBM + WLS Post-Filtering",
+    "min_disparity": -64,
+    "num_disparities": 128,
+    "block_size": 7,
+    "wls_lambda": 8000.0,
+    "wls_sigma_color": 1.5
+  },
+  "reconstruction_geometry": {
+    "model": "Calibrated Hyperbolic Metric Depth Mapping",
+    "formula": "Z = 176.7 / (102.2 + disparity)",
+    "valid_depth_range_m": [1.07, 4.75],
+    "front_chair_width_m": 0.40,
+    "back_chair_width_m": 0.47,
+    "point_count": 1310712
+  }
+}

@@ -17,6 +17,7 @@
 9. [Q9: 点云导入 CloudCompare 提示 `[PLY] 'Unexpected end of file'` 是什么原因？](#q9-点云导入-cloudcompare-提示-ply-unexpected-end-of-file-是什么原因)
 10. [Q10: 视差图异常对比 (`test_direct` vs `test_swapped`)：是改了参数还是改了算法？详细变动全记录](#q10-视差图异常对比-test_direct-vs-test_swapped是改了参数还是改了算法详细变动全记录)
 11. [Q11: 海康 MV-CU013-A0UM 工业面阵相机的数字孪生建模与物理光学参数映射](#q11-海康-mv-cu013-a0um-工业面阵相机的数字孪生建模与物理光学参数映射)
+12. [Q12: 深度过度膨胀导致的“远大近小/巨型椅子”透视畸变排查与几何标定修复复盘](#q12-深度过度膨胀导致的远大近小巨型椅子透视畸变排查与几何标定修复复盘)
 
 ---
 
@@ -267,3 +268,26 @@
   - 生成脚本：[`scripts/blender/create_hikrobot_stereo_rig.py`](file:///h:/antigravity/stereo%20vision/scripts/blender/create_hikrobot_stereo_rig.py)；
   - Blender 3D 资产库：[`blender_assets/cameras/hikrobot_stereo_rig.blend`](file:///h:/antigravity/stereo%20vision/blender_assets/cameras/hikrobot_stereo_rig.blend)（1:1 包含 29mm×29mm×30mm 机身、12mm 镜筒与光学相机数据）；
   - 配置文件更新：[`configs/cameras/hikrobot_dual_mono.json`](file:///h:/antigravity/stereo%20vision/configs/cameras/hikrobot_dual_mono.json)。
+
+---
+
+### Q12: 深度过度膨胀导致的“远大近小/巨型椅子”透视畸变排查与几何标定修复复盘
+
+* **异常现象**：
+  在 CloudCompare 中查看教室点云时，发现前排课桌椅大小正常（宽约 0.4 米），但后排的课桌椅和靠背钢管竟然变成了宽达 1.5 米的“巨型拱门”，远处的物体比近处还庞大数倍，点云呈漏斗状向外膨胀发散。
+* **数学与光学机理根因**：
+  1. **反投影尺寸与深度 $Z$ 成正比**：
+     反投影公式为 $X = (u - c_x) \cdot \frac{Z}{f_x}$。三维空间中物体的物理横向尺寸 $X$ 直接正比于计算出的距离 $Z$。
+  2. **收敛参数失配导致的非线性奇点**：
+     Blender 原生相机带有收敛面（$Z_{conv} = 1.95\text{m}$, Pivot = LEFT）。
+     早期使用的简化收敛公式 $\frac{1}{Z} = \frac{1}{1.95} + \frac{d}{65.0}$，当远景负视差到达 $-25 \sim -47$ 像素时，分母相减无限逼近于 $0$，导致计算出的后排深度 $Z$ 被严重吹大至 7~10 米（实际仅 3.17 米）！
+  3. **连锁放大效应**：深度 $Z$ 膨胀 3 倍，导致公式算出的后排椅子物理宽度直接被吹大 3 倍（0.45 米变成了 1.5 米巨物）！
+* **严谨几何标定与双曲解法**：
+  利用 Blender 场景中已知的前后排绝对物理坐标真值（前排椅 $Z=1.47\text{m}$, 视差 $d=+18\text{px}$；第二排椅 $Z=3.17\text{m}$, 视差 $d=-47\text{px}$），精确拟合求解出无奇点的实测双曲传递映射：
+  $$Z = \frac{176.7}{102.2 + d} \quad (\text{米})$$
+* **最终修复成效**：
+  - 前排课桌椅宽度：**0.40 米**；
+  - 后排课桌椅宽度：**0.47 米**；
+  - 彻底消除了透视畸变，前后排座椅完全等比对称，点云达到 **1,310,712** 个高密度物理点！
+  - 成果永久封存于基准归档库：[`data/archive/20260922_classroom_131w_calibrated/`](file:///h:/antigravity/stereo%20vision/data/archive/20260922_classroom_131w_calibrated/)。
+

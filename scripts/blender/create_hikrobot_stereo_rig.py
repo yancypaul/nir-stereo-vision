@@ -113,3 +113,4 @@ print(f"  理论像素焦距 fx/fy: {THEORETICAL_FX_PX:.2f} px")
 print(f"  立体基线: {BASELINE_M * 1000.0:.1f} mm")
 print(f"  保存文件: {out_blend}")
 print(f"=======================================================\n")
+

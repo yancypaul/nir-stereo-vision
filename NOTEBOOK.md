@@ -16,6 +16,7 @@
 8. [Q8: 三维点云 `.ply` 格式是什么？有哪些专用软件可以打开并进行交互式漫游？](#q8-三维点云-ply-格式是什么有哪些专用软件可以打开并进行交互式漫游)
 9. [Q9: 点云导入 CloudCompare 提示 `[PLY] 'Unexpected end of file'` 是什么原因？](#q9-点云导入-cloudcompare-提示-ply-unexpected-end-of-file-是什么原因)
 10. [Q10: 视差图异常对比 (`test_direct` vs `test_swapped`)：是改了参数还是改了算法？详细变动全记录](#q10-视差图异常对比-test_direct-vs-test_swapped是改了参数还是改了算法详细变动全记录)
+11. [Q11: 海康 MV-CU013-A0UM 工业面阵相机的数字孪生建模与物理光学参数映射](#q11-海康-mv-cu013-a0um-工业面阵相机的数字孪生建模与物理光学参数映射)
 
 ---
 
@@ -242,3 +243,27 @@
     3. 利用左眼灰度图作为双边引导图像（Guided Filtering），基于加权最小二乘（WLS，$\lambda=8000.0, \sigma=1.5$）优化能量泛函：
        $$E(D) = \sum_p (D(p) - D_{raw}(p))^2 + \lambda \sum_{p \sim q} w(p, q) (D(p) - D(q))^2$$
     *最终效果*：平整桌面如镜面般光滑，而椅背、吊灯与墙壁边缘如刀削般锐利，黑洞消除率达 **95.2%**。
+
+---
+
+### Q11: 海康 MV-CU013-A0UM 工业面阵相机的数字孪生建模与物理光学参数映射
+
+* **相机型号与硬件背景**：
+  - 相机：海康机器人 `MV-CU013-A0UM`（130 万像素，USB 3.0，全局快门 CMOS，黑白 Mono8）；
+  - 镜头：12mm C-Mount 工业定焦镜头；
+  - 机构：双目刚性支架固定基线 $B = 60.0\text{ mm}$。
+* **物理光学参数的数学映射推导**：
+  1. **靶面物理宽度与高度**：
+     - 水平分辨率 $W = 1280$ 像素，像元尺寸 $4.8\,\mu\text{m} = 0.0048\text{ mm}$；
+     - 靶面物理宽度：$W_{sensor} = 1280 \times 0.0048 = \mathbf{6.144\text{ mm}}$；
+     - 靶面物理高度：$H_{sensor} = 1024 \times 0.0048 = \mathbf{4.9152\text{ mm}}$（精确吻合标准 1/2 英寸光学靶面）；
+  2. **理论像素焦距（Camera Matrix $f_x, f_y$）**：
+     - $$f_x = f_y = \frac{f}{W_{sensor}} \times W = \frac{12.0}{6.144} \times 1280 = \mathbf{2500.0\text{ 像素}}$$
+  3. **双目空间位姿布局**：
+     - 左相机光心位于：$(-0.030\text{m}, 0, 0)$；
+     - 右相机光心位于：$(+0.030\text{m}, 0, 0)$；
+     - 双目基线：$B = 60\text{ mm} = 0.060\text{ m}$，纯水平平行光轴对齐。
+* **数字孪生资产产物**：
+  - 生成脚本：[`scripts/blender/create_hikrobot_stereo_rig.py`](file:///h:/antigravity/stereo%20vision/scripts/blender/create_hikrobot_stereo_rig.py)；
+  - Blender 3D 资产库：[`blender_assets/cameras/hikrobot_stereo_rig.blend`](file:///h:/antigravity/stereo%20vision/blender_assets/cameras/hikrobot_stereo_rig.blend)（1:1 包含 29mm×29mm×30mm 机身、12mm 镜筒与光学相机数据）；
+  - 配置文件更新：[`configs/cameras/hikrobot_dual_mono.json`](file:///h:/antigravity/stereo%20vision/configs/cameras/hikrobot_dual_mono.json)。

@@ -1,12 +1,23 @@
 {
   "camera_type": "Hikrobot_Dual_Mono",
-  "description": "海康威视双目黑白工业相机近红外配置",
+  "camera_model": "MV-CU013-A0UM",
+  "description": "海康机器人 130万像素全局快门双目黑白近红外工业相机配置",
+  "optical_specs": {
+    "sensor_type": "1/2 inch CMOS Global Shutter",
+    "resolution": [1280, 1024],
+    "pixel_size_um": [4.8, 4.8],
+    "sensor_width_mm": 6.144,
+    "sensor_height_mm": 4.9152,
+    "lens_focal_length_mm": 12.0,
+    "stereo_baseline_mm": 60.0,
+    "theoretical_fx_fy_px": 2500.0
+  },
   "left_camera": {
     "device_index": 0,
     "user_defined_name": "Left_NIR_Cam",
     "exposure_time_us": 5000.0,
     "gain": 12.0,
-    "frame_rate": 30.0,
+    "frame_rate": 60.0,
     "pixel_format": "Mono8"
   },
   "right_camera": {
@@ -14,7 +25,7 @@
     "user_defined_name": "Right_NIR_Cam",
     "exposure_time_us": 5000.0,
     "gain": 12.0,
-    "frame_rate": 30.0,
+    "frame_rate": 60.0,
     "pixel_format": "Mono8"
   },
   "sync_mode": "Software_or_HardTrigger",

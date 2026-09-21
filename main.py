@@ -183,7 +183,7 @@ def main():
     recon_p = subparsers.add_parser("reconstruct", help="执行 SGBM 稠密点云重建")
     recon_p.add_argument("--left", type=str, required=True, help="待测左图路径")
     recon_p.add_argument("--right", type=str, required=True, help="待测右图路径")
-    recon_p.add_argument("--output-ply", type=str, default="classroom_pointcloud.ply", help="输出点云文件名")
+    recon_p.add_argument("--output-ply", type=str, default="reconstructed_pointcloud.ply", help="输出点云文件名 (默认: reconstructed_pointcloud.ply)")
 
     # 4. 单元测试命令
     subparsers.add_parser("test", help="运行所有单元测试")

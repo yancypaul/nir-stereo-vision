@@ -503,7 +503,6 @@ class StereoReconstructor:
         # 5.1 保存 3D 点云 (.ply)
         ply_path = recon_dir / f"model_{timestamp}_{matcher_tag}.ply"
         o3d.io.write_point_cloud(str(ply_path), pcd)
-        o3d.io.write_point_cloud(str(base_out_dir / "latest_model.ply"), pcd)
         print(f"  [OK] 3D 点云已保存至专属目录: {ply_path}")
 
         # 5.2 保存稠密视差伪彩图 (.png)
@@ -513,7 +512,6 @@ class StereoReconstructor:
         disp_color[disparity <= self.min_disp] = 0
         disp_path = recon_dir / f"disparity_{timestamp}_{matcher_tag}.png"
         cv2.imwrite(str(disp_path), disp_color)
-        cv2.imwrite(str(base_out_dir / "latest_disparity.png"), disp_color)
         print(f"  [OK] 稠密视差图已保存: {disp_path}")
 
         # 5.3 保存真实物理深度伪彩图 (.png)
@@ -526,26 +524,22 @@ class StereoReconstructor:
         depth_color[~valid_depth] = 0
         depth_path = recon_dir / f"depth_{timestamp}_{matcher_tag}.png"
         cv2.imwrite(str(depth_path), depth_color)
-        cv2.imwrite(str(base_out_dir / "latest_depth.png"), depth_color)
         print(f"  [OK] 物理深度图已保存: {depth_path}")
 
         # 5.4 保存校正灰度图 / 引导图 (.png)
         gray_left = cv2.cvtColor(rect_l, cv2.COLOR_BGR2GRAY) if len(rect_l.shape) == 3 else rect_l
         gray_path = recon_dir / f"gray_left_{timestamp}.png"
         cv2.imwrite(str(gray_path), gray_left)
-        cv2.imwrite(str(base_out_dir / "latest_gray_left.png"), gray_left)
         print(f"  [OK] 引导灰度图已保存: {gray_path}")
 
         # 5.5 保存全流程诊断监控大图 (.png)
         if out_cfg.get("generate_preview", True):
             preview_path = recon_dir / f"showcase_{timestamp}_{matcher_tag}.png"
             self._render_showcase(rect_l, rect_r, disparity, pcd, str(preview_path))
-            self._render_showcase(rect_l, rect_r, disparity, pcd, str(base_out_dir / "latest_showcase.png"))
             print(f"  [OK] 诊断监控大图已保存: {preview_path}")
 
         print("=" * 70)
         print(f"[SUCCESS] 流水线执行完毕！本轮产物已完整归档至: {recon_dir}")
-        print(f"         (根目录下 latest_model.ply 已同步更新)")
         print("=" * 70)
         return pcd
 

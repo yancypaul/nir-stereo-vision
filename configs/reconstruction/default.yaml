@@ -41,8 +41,8 @@ calibration:
 # 3. 立体匹配算法核心参数 (Stereo Matcher: SGBM-HH 或 GREAT-Stereo)
 # ------------------------------------------------------------------------------
 matcher:
-  # 匹配引擎类型: "sgbm" (传统CPU高保真) 或 "great" (ICCV 2025 SOTA 深度神经网络)
-  type: "sgbm"
+  # 匹配引擎类型: "great" (ICCV 2025 SOTA 深度神经网络，默认) 或 "sgbm" (传统CPU高保真)
+  type: "great"
 
   # [GREAT-Stereo 深度学习引擎配置] (当 type == "great" 时生效):
   checkpoint_path: "../GREAT-Stereo/checkpoints/great-igev-middlebury-submit.pth"

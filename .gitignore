@@ -11,11 +11,12 @@ ENV/
 dist/
 build/
 
-# IDEs
+# IDEs & Office Lock Files
 .vscode/
 .idea/
 *.swp
 *.swo
+~$*
 
 # Blender & Heavy 3D Assets
 *.blend
@@ -36,6 +37,7 @@ data/hik_*.png
 data/simulation/
 data/output/*
 !data/output/hk_real_output/
+data/output/hk_real_output/recon_*
 data/blender_sim/
 data/multiview_stations/
 data/non_ideal_sim/

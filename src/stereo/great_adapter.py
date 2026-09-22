@@ -21,12 +21,28 @@ import numpy as np
 import cv2
 
 # 延迟导入 PyTorch 避免无 GPU 环境下启动崩溃
+TORCH_AVAILABLE = False
 try:
     import torch
     import torch.nn.functional as F
     TORCH_AVAILABLE = True
 except ImportError:
-    TORCH_AVAILABLE = False
+    # 自动跨环境借用 ffs 的完整 PyTorch GPU 环境 (自动桥接，防止在 VS Code base 环境下点运行报错)
+    ffs_sp = r"F:\anaconda\envs\ffs\Lib\site-packages"
+    ffs_dll = r"F:\anaconda\envs\ffs\Lib\site-packages\torch\lib"
+    if os.path.exists(ffs_sp) and ffs_sp not in sys.path:
+        sys.path.insert(0, ffs_sp)
+        if hasattr(os, "add_dll_directory") and os.path.exists(ffs_dll):
+            try:
+                os.add_dll_directory(ffs_dll)
+            except Exception:
+                pass
+        try:
+            import torch
+            import torch.nn.functional as F
+            TORCH_AVAILABLE = True
+        except ImportError:
+            TORCH_AVAILABLE = False
 
 
 class InputPadder:

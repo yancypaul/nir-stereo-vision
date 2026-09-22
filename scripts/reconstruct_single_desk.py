@@ -10,7 +10,7 @@ out_dir = PROJECT_ROOT / "data" / "output" / "pointcloud"
 out_dir.mkdir(parents=True, exist_ok=True)
 
 print("\n" + "="*65)
-print("  [Single Desk] chair.019 Close-up Stereo Reconstruction")
+print("  🔬 单套课桌椅 (chair.019) 毫米级近距高保真双目重建系统")
 print("="*65)
 
 f_px = 1000.0
@@ -147,3 +147,4 @@ if len(station_clouds) == 2:
     print(f"\n[√] 单套课桌椅 360° 正反闭合融合点云已导出！")
     print(f"  合并总规模: {len(fused_p):,} 个精细实体点")
     print(f"  文件路径: {fused_ply}")
+

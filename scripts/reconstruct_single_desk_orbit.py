@@ -176,9 +176,7 @@ final_clean, _ = final_pcd.remove_statistical_outlier(nb_neighbors=30, std_ratio
 fused_p = np.asarray(final_clean.points)
 fused_c = (np.asarray(final_clean.colors) * 255.0).astype(np.uint8)
 
-out_desk_dir = out_dir / "single_desk"
-out_desk_dir.mkdir(parents=True, exist_ok=True)
-out_ply = out_desk_dir / "single_desk_orbit_360.ply"
+out_ply = out_dir / "single_desk_orbit_360.ply"
 with open(out_ply, "w", encoding="utf-8") as f:
     f.write(f"ply\nformat ascii 1.0\nelement vertex {len(fused_p)}\n")
     f.write("property float x\nproperty float y\nproperty float z\n")
@@ -190,6 +188,9 @@ print("\n" + "="*70)
 print(f"[OK] 360 degree orbit pointcloud reconstruction successful!")
 print(f"  Final point count: {len(fused_p):,} points")
 print(f"  Export file: {out_ply}")
+print(f"🎉 360° 环绕全方位闭合点云重构成功！")
+print(f"  最终点云规模: {len(fused_p):,} 个精细实体点")
+print(f"  导出文件: {out_ply}")
 print("="*70)
 
 # 4视角展示全景：3D鸟瞰、侧面图、正面图、俯视图
@@ -241,3 +242,4 @@ preview_path = brain_dir / "single_desk_orbit_360_preview.png"
 plt.savefig(str(preview_path), dpi=180)
 plt.close()
 print(f"[√] 全景预览图已保存: {preview_path}")
+

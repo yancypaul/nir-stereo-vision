@@ -4,13 +4,15 @@ import time
 import json
 import threading
 from typing import Tuple, Optional
-from ctypes import c_ubyte
+from ctypes import c_ubyte, POINTER, cast
 import numpy as np
 
 from .base_camera import BaseStereoCamera
 
 # 自动尝试定位海康官方 MVS SDK 的 Python 模块路径
 HIK_SDK_PATHS = [
+    r"F:\MVS\Development\Samples\Python\MvImport",
+    r"F:\Program Files\MVS\Development\Samples\Python\MvImport",
     r"C:\Program Files (x86)\MVS\Development\Samples\Python\MvImport",
     r"C:\Program Files\MVS\Development\Samples\Python\MvImport",
     r"D:\Program Files (x86)\MVS\Development\Samples\Python\MvImport",
@@ -24,8 +26,8 @@ for p in HIK_SDK_PATHS:
         sys.path.append(p)
         try:
             from MvCameraControl_class import (
-                MvCamera, MV_CC_DEVICE_INFO_LIST, MV_OK,
-                MV_GIGE_DEVICE, MV_USB_DEVICE
+                MvCamera, MV_CC_DEVICE_INFO_LIST, MV_CC_DEVICE_INFO, MV_OK,
+                MV_GIGE_DEVICE, MV_USB_DEVICE, MV_ACCESS_Exclusive
             )
             from CameraParams_header import MV_FRAME_OUT_INFO_EX
             HIK_SDK_FOUND = True
@@ -72,6 +74,7 @@ class HikStereoCamera(BaseStereoCamera):
             self._is_opened = False
             return False
 
+        MvCamera.MV_CC_Initialize()
         device_list = MV_CC_DEVICE_INFO_LIST()
         ret = MvCamera.MV_CC_EnumDevices(MV_GIGE_DEVICE | MV_USB_DEVICE, device_list)
         if ret != MV_OK or device_list.nDeviceNum < 2:
@@ -84,14 +87,14 @@ class HikStereoCamera(BaseStereoCamera):
         self.cam_l = MvCamera()
         self.cam_r = MvCamera()
 
-        st_dev_l = device_list.pDeviceInfo[0]
-        st_dev_r = device_list.pDeviceInfo[1]
+        st_dev_l = cast(device_list.pDeviceInfo[0], POINTER(MV_CC_DEVICE_INFO)).contents
+        st_dev_r = cast(device_list.pDeviceInfo[1], POINTER(MV_CC_DEVICE_INFO)).contents
 
-        if self.cam_l.MV_CC_CreateHandle(st_dev_l) != MV_OK or self.cam_l.MV_CC_OpenDevice() != MV_OK:
+        if self.cam_l.MV_CC_CreateHandle(st_dev_l) != MV_OK or self.cam_l.MV_CC_OpenDevice(MV_ACCESS_Exclusive, 0) != MV_OK:
             print("[HikCamera Error] 左相机打开失败！")
             return False
 
-        if self.cam_r.MV_CC_CreateHandle(st_dev_r) != MV_OK or self.cam_r.MV_CC_OpenDevice() != MV_OK:
+        if self.cam_r.MV_CC_CreateHandle(st_dev_r) != MV_OK or self.cam_r.MV_CC_OpenDevice(MV_ACCESS_Exclusive, 0) != MV_OK:
             print("[HikCamera Error] 右相机打开失败！")
             return False
 
@@ -122,6 +125,20 @@ class HikStereoCamera(BaseStereoCamera):
             print(f"[HikCamera] {name} 配置完成: 曝光 {self.exposure_time_us} μs, 增益 {self.gain} dB")
         except Exception as e:
             print(f"[HikCamera] {name} 参数微调提醒: {e}")
+
+    def set_exposure(self, exposure_time_us: float):
+        """动态修改双目相机曝光时间 (微秒)"""
+        self.exposure_time_us = float(np.clip(exposure_time_us, 100.0, 1000000.0))
+        for cam, name in [(self.cam_l, "左相机"), (self.cam_r, "右相机")]:
+            if cam:
+                cam.MV_CC_SetFloatValue("ExposureTime", self.exposure_time_us)
+
+    def set_gain(self, gain_db: float):
+        """动态修改双目相机增益 (dB)"""
+        self.gain = float(np.clip(gain_db, 0.0, 30.0))
+        for cam, name in [(self.cam_l, "左相机"), (self.cam_r, "右相机")]:
+            if cam:
+                cam.MV_CC_SetFloatValue("Gain", self.gain)
 
     def _grab_worker(self, cam, eye):
         frame_info = MV_FRAME_OUT_INFO_EX()

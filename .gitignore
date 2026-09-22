@@ -30,6 +30,8 @@ blender_assets/classroom/
 data/calibration_images/
 data/calibration_results/*.npz
 data/calibration_results/corner_visualizations/
+data/captured_images/
+data/hik_*.png
 data/simulation/
 data/output/
 data/blender_sim/

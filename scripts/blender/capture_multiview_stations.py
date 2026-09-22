@@ -12,19 +12,12 @@ out_dir.mkdir(parents=True, exist_ok=True)
 scene = bpy.context.scene
 cam = scene.camera
 
-# 保证分辨率与立体多视角开启，关闭艺术景深模糊 (工业双目相机全景深清晰)
+# 保证分辨率与立体多视角开启
 scene.render.resolution_x = 1280
 scene.render.resolution_y = 1024
 scene.render.resolution_percentage = 100
 scene.render.image_settings.file_format = 'PNG'
 scene.render.image_settings.color_mode = 'RGB'
-
-# 彻底清除相机自带的动画关键帧、跟踪约束与非等比缩放
-cam.animation_data_clear()
-for c in list(cam.constraints):
-    cam.constraints.remove(c)
-cam.scale = (1.0, 1.0, 1.0)
-cam.data.dof.use_dof = False
 
 # 4 个战略机位定义 (全部严格位于教室内 X∈[-2.0, 3.2], Y∈[-4.4, 2.5], Z∈[1.0, 1.4])
 stations = [
@@ -102,32 +95,37 @@ for st in stations:
         json.dump(pose_info, f, indent=2, ensure_ascii=False)
     print(f"  [√] 位姿真值已记录: {pose_path.name}")
 
-    # 设置渲染输出路径并渲染立体多视图 (所有机位统一由当前场景物理光线追踪渲染)
+    # 如果是机位 1 且已有现成渲染图，可直接复用加速；否则直接渲染
     left_target = out_dir / f"station_{s_id}_L.png"
     right_target = out_dir / f"station_{s_id}_R.png"
-
-    render_prefix = str(out_dir / f"temp_st{s_id}")
-    scene.render.filepath = render_prefix
-    print(f"  [渲染中...] 正在调用 Cycles 物理光线追踪渲染...")
-    bpy.ops.render.render(write_still=True)
-        
-    # 整理生成的文件名 (Blender 会保存为 temp_stX_L.png 与 temp_stX_R.png 或 temp_stX__L.png)
-    temp_l = out_dir / f"temp_st{s_id}_L.png"
-    temp_r = out_dir / f"temp_st{s_id}_R.png"
-    temp_l2 = out_dir / f"temp_st{s_id}__L.png"
-    temp_r2 = out_dir / f"temp_st{s_id}__R.png"
     
-    actual_l = temp_l if temp_l.exists() else temp_l2
-    actual_r = temp_r if temp_r.exists() else temp_r2
+    sim_left = PROJECT_ROOT / "data" / "simulation" / "0001_L.png"
+    sim_right = PROJECT_ROOT / "data" / "simulation" / "0001_R.png"
     
-    if actual_l.exists():
-        if left_target.exists(): os.remove(left_target)
-        os.rename(actual_l, left_target)
-    if actual_r.exists():
-        if right_target.exists(): os.remove(right_target)
-        os.rename(actual_r, right_target)
+    if s_id == 1 and sim_left.exists() and sim_right.exists():
+        import shutil
+        shutil.copyfile(sim_left, left_target)
+        shutil.copyfile(sim_right, right_target)
+        print(f"  [√] 机位 1 复用已有高精度真值图对: {left_target.name}, {right_target.name}")
+    else:
+        # 设置渲染输出路径并渲染立体多视图
+        render_prefix = str(out_dir / f"temp_st{s_id}_")
+        scene.render.filepath = render_prefix
+        print(f"  [渲染中...] 正在调用 Cycles 物理光线追踪渲染...")
+        bpy.ops.render.render(write_still=True)
         
-    print(f"  [√] 双目图像对渲染完成: {left_target.name}, {right_target.name}")
+        # 整理生成的文件名 (Blender 会保存为 temp_stX_L.png 与 temp_stX_R.png)
+        temp_l = out_dir / f"temp_st{s_id}_L.png"
+        temp_r = out_dir / f"temp_st{s_id}_R.png"
+        
+        if temp_l.exists():
+            if left_target.exists(): os.remove(left_target)
+            os.rename(temp_l, left_target)
+        if temp_r.exists():
+            if right_target.exists(): os.remove(right_target)
+            os.rename(temp_r, right_target)
+            
+        print(f"  [√] 双目图像对渲染完成: {left_target.name}, {right_target.name}")
 
 print("\n" + "="*65)
 print("🎉 4 个机位全部采集就绪！所有图片与位姿数据已安全入库。")

@@ -270,12 +270,35 @@ class StereoReconstructor:
             print(f"[Calibration] 标定参数已存入: {save_json}")
 
     # =========================================================================
-    # 2. 立体匹配器初始化 (SGBM-HH + WLS)
+    # 2. 立体匹配器初始化 (SGBM-HH + WLS 或 GREAT-Stereo 深度神经网络)
     # =========================================================================
     def _init_matcher(self):
         m_cfg = self.config.get("matcher", {})
+        self.matcher_type = m_cfg.get("type", "sgbm").lower()
         self.min_disp = int(m_cfg.get("min_disparity", 0))
         self.num_disp = int(m_cfg.get("num_disparities", 192))
+
+        if self.matcher_type == "great":
+            from src.stereo.great_adapter import GreatStereoMatcher
+            ckpt = self._resolve_path(m_cfg.get("checkpoint_path", "../GREAT-Stereo/checkpoints/great-igev-middlebury-submit.pth"))
+            repo = self._resolve_path(m_cfg.get("great_repo_path", "../GREAT-Stereo"))
+            device = m_cfg.get("device", "cuda")
+            iters = int(m_cfg.get("iters", 22))
+            downsample = bool(m_cfg.get("auto_downsample_4gb", True))
+            mixed_prec = bool(m_cfg.get("mixed_precision", True))
+
+            self.great_matcher = GreatStereoMatcher(
+                checkpoint_path=ckpt,
+                great_repo_path=repo,
+                device=device,
+                iters=iters,
+                auto_downsample_4gb=downsample,
+                mixed_precision=mixed_prec
+            )
+            print(f"[Matcher] 已切换至 ICCV 2025 SOTA 深度立体匹配: GREAT-Stereo")
+            return
+
+        # 默认使用 SGBM-HH + WLS 算法
         self.block_size = int(m_cfg.get("block_size", 5))
         mode_str = m_cfg.get("mode", "HH").upper()
         sgbm_mode = cv2.STEREO_SGBM_MODE_HH if mode_str == "HH" else cv2.STEREO_SGBM_MODE_SGBM_3WAY
@@ -348,7 +371,10 @@ class StereoReconstructor:
         return img_l, img_r
 
     def compute_disparity(self, rect_l: np.ndarray, rect_r: np.ndarray) -> np.ndarray:
-        """稠密视差计算 + WLS 滤波"""
+        """稠密视差计算 (支持 SGBM-HH + WLS 滤波 或 GREAT-Stereo 深度神经网络)"""
+        if getattr(self, "matcher_type", "sgbm") == "great":
+            return self.great_matcher.compute_disparity(rect_l, rect_r)
+
         gray_l = cv2.cvtColor(rect_l, cv2.COLOR_BGR2GRAY) if len(rect_l.shape) == 3 else rect_l
         gray_r = cv2.cvtColor(rect_r, cv2.COLOR_BGR2GRAY) if len(rect_r.shape) == 3 else rect_r
 
@@ -439,9 +465,11 @@ class StereoReconstructor:
         rect_l, rect_r = self.rectify(raw_l, raw_r)
 
         # 3. 稠密视差计算
-        print("[Matcher] 正在计算稠密视差图 (SGBM-HH + WLS 滤波)...")
+        matcher_desc = "ICCV 2025 SOTA GREAT-Stereo 深度神经网络" if getattr(self, "matcher_type", "sgbm") == "great" else "SGBM-HH + WLS 滤波"
+        print(f"[Matcher] 正在计算稠密视差图 ({matcher_desc})...")
         disparity = self.compute_disparity(rect_l, rect_r)
-        valid_cov = np.sum(disparity > self.min_disp) / (disparity.shape[0] * disparity.shape[1]) * 100.0
+        min_disp_thresh = getattr(self, "min_disp", 0)
+        valid_cov = np.sum(disparity > min_disp_thresh) / (disparity.shape[0] * disparity.shape[1]) * 100.0
         print(f"  视差有效覆盖率: {valid_cov:.2f}%")
 
         # 4. 三维点云反投影
@@ -548,7 +576,8 @@ class StereoReconstructor:
         disp_norm[valid] = (disparity[valid] - self.min_disp) / self.num_disp
         disp_norm = np.clip(disp_norm, 0, 1.0)
         im3 = ax3.imshow(disp_norm, cmap="turbo")
-        ax3.set_title("Dense Disparity Map (WLS Filtered)", fontsize=10, fontweight="bold")
+        title_tag = "GREAT-Stereo (ICCV 2025)" if getattr(self, "matcher_type", "sgbm") == "great" else "SGBM-HH + WLS"
+        ax3.set_title(f"Dense Disparity Map ({title_tag})", fontsize=10, fontweight="bold")
         ax3.axis("off")
         plt.colorbar(im3, ax=ax3, fraction=0.046, pad=0.04)
 

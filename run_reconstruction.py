@@ -38,6 +38,7 @@ def main():
     parser.add_argument("--right", "-r", type=str, default=None, help="覆盖右图路径")
     parser.add_argument("--calib", type=str, default=None, help="覆盖标定文件路径")
     parser.add_argument("--mode", choices=["ideal", "file", "auto_board"], default=None, help="覆盖标定模式")
+    parser.add_argument("--matcher", "-m", choices=["sgbm", "great"], default=None, help="覆盖立体匹配引擎类型 (sgbm 或 great)")
     parser.add_argument("--num-disp", type=int, default=None, help="覆盖 num_disparities")
     parser.add_argument("--min-disp", type=int, default=None, help="覆盖 min_disparity")
     parser.add_argument("--ply", "-o", type=str, default=None, help="覆盖输出 PLY 路径")
@@ -76,6 +77,8 @@ def main():
         config["calibration"]["mode"] = args.mode
     if args.calib:
         config["calibration"]["param_file"] = args.calib
+    if args.matcher:
+        config["matcher"]["type"] = args.matcher
     if args.num_disp:
         config["matcher"]["num_disparities"] = args.num_disp
     if args.min_disp is not None:

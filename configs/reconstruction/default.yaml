@@ -38,9 +38,21 @@ calibration:
   square_size_mm: 20.0
 
 # ------------------------------------------------------------------------------
-# 3. 立体匹配算法核心参数 (Stereo Matcher: SGBM-HH)
+# 3. 立体匹配算法核心参数 (Stereo Matcher: SGBM-HH 或 GREAT-Stereo)
 # ------------------------------------------------------------------------------
 matcher:
+  # 匹配引擎类型: "sgbm" (传统CPU高保真) 或 "great" (ICCV 2025 SOTA 深度神经网络)
+  type: "sgbm"
+
+  # [GREAT-Stereo 深度学习引擎配置] (当 type == "great" 时生效):
+  checkpoint_path: "../GREAT-Stereo/checkpoints/great-igev-middlebury-submit.pth"
+  great_repo_path: "../GREAT-Stereo"
+  device: "cuda"              # "cuda" 或 "cpu"
+  iters: 22                   # GRU 视差循环更新轮数 (兼顾精度与速度)
+  auto_downsample_4gb: true   # 针对 GTX 1650Ti (4GB) 开启显存保护 (下采样推理后双线性插值复原)
+  mixed_precision: true       # 开启 fp16 混合精度显存优化
+
+  # [传统 SGBM 算法配置] (当 type == "sgbm" 时生效):
   # 真实相机视差搜索总宽 (基线 60mm, 焦距约 2550px, 1~2m 工作距离视差约 80~160px)
   num_disparities: 192
 

@@ -496,12 +496,12 @@ class StereoReconstructor:
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         matcher_tag = "great" if getattr(self, "matcher_type", "sgbm") == "great" else "sgbm"
-        # 每次重建创建独立的专属文件夹，并标注算法类型 (recon_great_... 或 recon_sgbm_...)
-        recon_dir = base_out_dir / f"recon_{matcher_tag}_{timestamp}"
+        # 文件夹以时间戳在前、算法后缀在后 (recon_YYYYMMDD_HHMMSS_great)，严格按时间升序排列
+        recon_dir = base_out_dir / f"recon_{timestamp}_{matcher_tag}"
         recon_dir.mkdir(parents=True, exist_ok=True)
 
         # 5.1 保存 3D 点云 (.ply)
-        ply_path = recon_dir / f"model_{matcher_tag}_{timestamp}.ply"
+        ply_path = recon_dir / f"model_{timestamp}_{matcher_tag}.ply"
         o3d.io.write_point_cloud(str(ply_path), pcd)
         o3d.io.write_point_cloud(str(base_out_dir / "latest_model.ply"), pcd)
         print(f"  [OK] 3D 点云已保存至专属目录: {ply_path}")
@@ -511,7 +511,7 @@ class StereoReconstructor:
         disp_vis = np.uint8(disp_vis)
         disp_color = cv2.applyColorMap(disp_vis, cv2.COLORMAP_JET)
         disp_color[disparity <= self.min_disp] = 0
-        disp_path = recon_dir / f"disparity_{matcher_tag}_{timestamp}.png"
+        disp_path = recon_dir / f"disparity_{timestamp}_{matcher_tag}.png"
         cv2.imwrite(str(disp_path), disp_color)
         cv2.imwrite(str(base_out_dir / "latest_disparity.png"), disp_color)
         print(f"  [OK] 稠密视差图已保存: {disp_path}")
@@ -524,7 +524,7 @@ class StereoReconstructor:
             depth_norm[valid_depth] = np.clip(depth_scaled[valid_depth], 0, 255).astype(np.uint8)
         depth_color = cv2.applyColorMap(depth_norm, cv2.COLORMAP_TURBO)
         depth_color[~valid_depth] = 0
-        depth_path = recon_dir / f"depth_{matcher_tag}_{timestamp}.png"
+        depth_path = recon_dir / f"depth_{timestamp}_{matcher_tag}.png"
         cv2.imwrite(str(depth_path), depth_color)
         cv2.imwrite(str(base_out_dir / "latest_depth.png"), depth_color)
         print(f"  [OK] 物理深度图已保存: {depth_path}")
@@ -538,7 +538,7 @@ class StereoReconstructor:
 
         # 5.5 保存全流程诊断监控大图 (.png)
         if out_cfg.get("generate_preview", True):
-            preview_path = recon_dir / f"showcase_{matcher_tag}_{timestamp}.png"
+            preview_path = recon_dir / f"showcase_{timestamp}_{matcher_tag}.png"
             self._render_showcase(rect_l, rect_r, disparity, pcd, str(preview_path))
             self._render_showcase(rect_l, rect_r, disparity, pcd, str(base_out_dir / "latest_showcase.png"))
             print(f"  [OK] 诊断监控大图已保存: {preview_path}")

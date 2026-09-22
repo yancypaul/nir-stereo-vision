@@ -27,3 +27,4 @@ echo 重建完成！产物已归档至 data\output\hk_real_output\
 echo 最新 3D 点云为: data\output\hk_real_output\latest_model.ply
 echo ======================================================================
 pause
+

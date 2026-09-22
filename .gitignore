@@ -21,6 +21,7 @@ build/
 *.blend
 *.blend1
 *.ply
+!data/output/hk_real_output/**/*.ply
 *.pcd
 *.obj
 *.mtl
@@ -33,7 +34,8 @@ data/calibration_results/corner_visualizations/
 data/captured_images/
 data/hik_*.png
 data/simulation/
-data/output/
+data/output/*
+!data/output/hk_real_output/
 data/blender_sim/
 data/multiview_stations/
 data/non_ideal_sim/

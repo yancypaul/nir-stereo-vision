@@ -83,7 +83,19 @@
 | [`create_studio.py`](file:///h:/antigravity/stereo%20vision/scripts/blender/create_studio.py) | **一键创建标定暗室**。自动配置 Blender 渲染引擎、双目相机参数、灯光和标定板。 |
 | [`render_calibration_dataset.py`](file:///h:/antigravity/stereo%20vision/scripts/blender/render_calibration_dataset.py) | **全自动多姿态标定图生成器**。自动把标定板摆成仰视、俯视、倾斜等 12 种典型角度，批量渲染输出 12 组双目图对。 |
 | [`create_tool_model.py`](file:///h:/antigravity/stereo%20vision/scripts/blender/create_tool_model.py) | **手术探针 3D 模型生成器**。读取 CAD JSON 几何，自动在 Blender 中组装生成探针支架、4 个反光球与针尖，并导出为 `.blend` 和 `.obj`。 |
-| [`render_probe_sim.py`](file:///h:/antigravity/stereo%20vision/scripts/blender/render_probe_sim.py) | **数字孪生探针仿真与真值记录器**。在纯黑近红外暗室中渲染探针双目测试图，并自动计算保存针尖的绝对物理真值坐标（Ground Truth），用于验证算法精度。 |
+| [`render_probe_sim.py`](file:///h:/antigravity/stereo%20vision/scripts/blender/render_probe_sim.py) | **数字孪生探针仿真与真值记录器**。在纯黑近红外暗室中渲染探针双目测试图，并自动计算保存针尖的绝对物理真值坐标（Ground Truth）。 |
+| [`capture_multiview_stations.py`](file:///h:/antigravity/stereo%20vision/scripts/blender/capture_multiview_stations.py) | **教室 4 大主视角采集器**。前后左右 4 机位自动记录精确位姿与物理光追双目图对。 |
+| [`capture_single_desk_orbit.py`](file:///h:/antigravity/stereo%20vision/scripts/blender/capture_single_desk_orbit.py) | **课桌 8 机位 360° 环绕采集器**。围绕课桌椅圆周 45° 间隔一圈+俯视扫描，彻底消除视线盲区。 |
+
+---
+
+## 🛠️ `scripts/` —— 核心三维双目匹配与体素融合脚本
+
+详见 [`scripts/README.md`](file:///h:/antigravity/stereo%20vision/scripts/README.md)：
+* **[`reconstruct_single_desk_orbit.py`](file:///h:/antigravity/stereo%20vision/scripts/reconstruct_single_desk_orbit.py)**：**★ 8 机位 360° 环绕微米级融合**，生成 74.7 万点单桌全封闭实体点云；
+* **[`reconstruct_multiview_fusion.py`](file:///h:/antigravity/stereo%20vision/scripts/reconstruct_multiview_fusion.py)**：**★ 全教室 4 大机位刚体融合**，输出 224 万点全景及 99 万点“室内桌椅专注版”；
+* **[`reconstruct_single_desk_smooth.py`](file:///h:/antigravity/stereo%20vision/scripts/reconstruct_single_desk_smooth.py)**：SGBM-HH 8 方向平滑匹配验证脚本；
+* **[`reconstruct_hikrobot.py`](file:///h:/antigravity/stereo%20vision/scripts/reconstruct_hikrobot.py)**：海康单机位标准标定点云重建脚本。
 
 ---
 
@@ -96,14 +108,19 @@
 
 ---
 
-## 📊 `data/` —— 本地运行数据 (Git 自动忽略防污染)
+## 📊 `data/` —— 本地运行数据 (规范化分流)
+
+详见点云资产手册 [`data/output/pointcloud/README.md`](file:///h:/antigravity/stereo%20vision/data/output/pointcloud/README.md)：
 
 | 文件夹 | 作用与内容 |
 | :--- | :--- |
-| `data/calibration_images/` | 存放用于标定的双目原始图对（`left_01.png`~`left_12.png`、`right_01.png`~`right_12.png`）。 |
-| `data/calibration_results/` | 标定产物缓存（角点标注图集 `corner_visualizations/`、高速查找表 `stereo_calib_params.npz`）。 |
-| `data/simulation/` | Blender 仿真渲染生成的测试帧（`probe_test_01_L.png`, `probe_test_01_R.png`）及绝对真值 `probe_ground_truth.json`。 |
-| `data/output/` | 算法解算结果标准化子目录：<br>• `depth/`：彩色物理深度图 `classroom_depth.png`、原始浮点深度矩阵 `classroom_depth_raw.npy`、单目灰度图 `classroom_gray.png`；<br>• `disparity/`：WLS 保边滤波高精度视差图 `classroom_disparity.png`；<br>• `pointcloud/`：三维彩色空间点云 `classroom_pointcloud.ply`、多视角全景大图 `classroom_pointcloud_preview.png`；<br>• `tracking/`：手术导航针尖追踪轨迹与验证图 `tracking_verification.png`；<br>• `debug/`：算法演进历史草稿与调参对比图（`test_direct_disp`、`_optimized`、`_perfect` 等）。 |
+| `data/archive/` | **[历史冻结归档]** 早期经过验收的标定参数、131 万点海康点云等里程碑基准（只读防改动）。 |
+| `data/calibration_images/` | 标定板原始双目图对。 |
+| `data/calibration_results/` | 标定产物缓存（角点图集、极线映射表）。 |
+| `data/multiview_stations/` | 教室 4 大主机位图像对与位姿 JSON。 |
+| `data/single_desk/` | 单课桌前/后 2 机位特写图对。 |
+| `data/single_desk_orbit/` | **单课桌 8 机位 360° 环绕立体图对与位姿集**。 |
+| `data/output/pointcloud/` | **3D 点云标准化成果目录**：<br>• `single_desk/`：单套课桌椅高精点云（首选 `single_desk_orbit_360.ply`）；<br>• `classroom/`：教室宏观点云（首选 `classroom_interior_focused.ply`）；<br>• `single_desk/legacy/`：早期未平滑的对比实验点云。 |
 
 ---
 

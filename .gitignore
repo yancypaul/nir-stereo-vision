@@ -26,12 +26,20 @@ build/
 *.mtl
 blender_assets/classroom/
 
-# Data & Cache (Keep repo lightweight < 1MB)
+# Data & Cache (Keep repo lightweight)
 data/calibration_images/
 data/calibration_results/*.npz
 data/calibration_results/corner_visualizations/
 data/simulation/
 data/output/
 data/blender_sim/
+data/multiview_stations/
+data/non_ideal_sim/
+data/single_desk/
+data/single_desk_orbit/
+data/archive/
+releases/
+other_code/
 *.npz
 *.log
+

@@ -37,14 +37,14 @@ class OpticalTracker:
         with open(calib_path, "r", encoding="utf-8") as f:
             self.calib = json.load(f)
 
-        self.K1 = np.array(self.calib["K_left"], dtype=np.float64)
-        self.D1 = np.array(self.calib.get("D_left", self.calib.get("dist_left")), dtype=np.float64)
-        self.K2 = np.array(self.calib["K_right"], dtype=np.float64)
-        self.D2 = np.array(self.calib.get("D_right", self.calib.get("dist_right")), dtype=np.float64)
-        self.R1 = np.array(self.calib["R_left"], dtype=np.float64)
-        self.R2 = np.array(self.calib["R_right"], dtype=np.float64)
-        self.P1 = np.array(self.calib["P_left"], dtype=np.float64)
-        self.P2 = np.array(self.calib["P_right"], dtype=np.float64)
+        self.K1 = np.array(self.calib.get("K1", self.calib.get("K_left")), dtype=np.float64)
+        self.D1 = np.array(self.calib.get("D1", self.calib.get("D_left", self.calib.get("dist_left"))), dtype=np.float64)
+        self.K2 = np.array(self.calib.get("K2", self.calib.get("K_right")), dtype=np.float64)
+        self.D2 = np.array(self.calib.get("D2", self.calib.get("D_right", self.calib.get("dist_right"))), dtype=np.float64)
+        self.R1 = np.array(self.calib.get("R1", self.calib.get("R_left")), dtype=np.float64)
+        self.R2 = np.array(self.calib.get("R2", self.calib.get("R_right")), dtype=np.float64)
+        self.P1 = np.array(self.calib.get("P1", self.calib.get("P_left")), dtype=np.float64)
+        self.P2 = np.array(self.calib.get("P2", self.calib.get("P_right")), dtype=np.float64)
 
         # 加载手术器械模型
         if tool is not None:
@@ -61,7 +61,7 @@ class OpticalTracker:
         gray_img: np.ndarray,
         threshold_val: int = 150,
         min_area: float = 8.0,
-        max_area: float = 2000.0
+        max_area: float = 8000.0
     ) -> List[Tuple[float, float]]:
         """
         亚像素灰度加权质心法提取红外高亮斑点

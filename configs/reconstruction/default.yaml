@@ -45,8 +45,8 @@ matcher:
   type: "great"
 
   # [GREAT-Stereo 深度学习引擎配置] (当 type == "great" 时生效):
-  checkpoint_path: "../GREAT-Stereo/checkpoints/great-igev-middlebury-submit.pth"
-  great_repo_path: "../GREAT-Stereo"
+  checkpoint_path: "third_party/GREAT-Stereo/checkpoints/great-igev-middlebury-submit.pth"
+  great_repo_path: "third_party/GREAT-Stereo"
   device: "cuda"              # "cuda" 或 "cpu"
   iters: 22                   # GRU 视差循环更新轮数 (兼顾精度与速度)
   auto_downsample_4gb: true   # 针对 GTX 1650Ti (4GB) 开启显存保护 (下采样推理后双线性插值复原)

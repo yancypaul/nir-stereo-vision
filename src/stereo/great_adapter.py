@@ -91,15 +91,35 @@ class GreatStereoMatcher:
         self.auto_downsample = auto_downsample_4gb
         self.mixed_precision = mixed_precision
 
-        # 动态挂载 GREAT-Stereo 模块路径
-        if great_repo_path is None:
-            # 默认同级目录下的 GREAT-Stereo
-            great_repo_path = str(Path(__file__).resolve().parent.parent.parent.parent / "GREAT-Stereo")
+        # 动态挂载 GREAT-Stereo 模块路径 (优先项目内嵌的 third_party/GREAT-Stereo)
+        project_root = Path(__file__).resolve().parents[2]
+        bundled_repo = project_root / "third_party" / "GREAT-Stereo"
+        external_repo = project_root.parent / "GREAT-Stereo"
+
+        if great_repo_path is None or not Path(great_repo_path).exists():
+            if bundled_repo.exists():
+                great_repo_path = str(bundled_repo)
+            elif external_repo.exists():
+                great_repo_path = str(external_repo)
+            else:
+                great_repo_path = str(bundled_repo)
+        else:
+            great_repo_path = str(Path(great_repo_path).resolve())
         
         if great_repo_path not in sys.path:
             sys.path.insert(0, great_repo_path)
 
+        # 智能匹配权重路径
+        if not os.path.exists(checkpoint_path):
+            bundled_ckpt = bundled_repo / "checkpoints" / "great-igev-middlebury-submit.pth"
+            external_ckpt = external_repo / "checkpoints" / "great-igev-middlebury-submit.pth"
+            if bundled_ckpt.exists():
+                checkpoint_path = str(bundled_ckpt)
+            elif external_ckpt.exists():
+                checkpoint_path = str(external_ckpt)
+
         print(f"[GREAT-Stereo] 正在加载神经网络模型...")
+        print(f"    --> 模块路径: {great_repo_path}")
         print(f"    --> 权重文件: {checkpoint_path}")
         print(f"    --> 运行设备: {self.device} (显存保护={self.auto_downsample}, 混合精度={self.mixed_precision})")
 

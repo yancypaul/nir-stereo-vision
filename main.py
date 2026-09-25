@@ -100,7 +100,41 @@ def cmd_track(args):
         print("\n>>> 追踪已停止。")
 
 def cmd_reconstruct(args):
-    """稠密立体匹配点云重建 (SGBM + WLS)"""
+    """稠密立体匹配点云重建 (支持 SGBM-HH 或 ICCV 2025 SOTA GREAT-Stereo)"""
+    matcher_type = getattr(args, "matcher", "great") or "great"
+    
+    if matcher_type == "great":
+        from src.stereo.reconstructor import StereoReconstructor
+        print(f"\n>>> 启动 GREAT-Stereo 深度学习稠密三维重建引擎...")
+        cfg = {
+            "input": {"left_image": args.left, "right_image": args.right},
+            "calibration": {"mode": "file", "param_file": "configs/calibration/stereo_calib_params.json"},
+            "matcher": {
+                "type": "great",
+                "checkpoint_path": "third_party/GREAT-Stereo/checkpoints/great-igev-middlebury-submit.pth",
+                "great_repo_path": "third_party/GREAT-Stereo",
+                "device": "cuda",
+                "iters": 22,
+                "auto_downsample_4gb": True,
+                "mixed_precision": True
+            },
+            "pointcloud": {
+                "min_depth_m": 0.5,
+                "max_depth_m": 5.0,
+                "remove_outliers": True,
+                "outlier_nb_neighbors": 30,
+                "outlier_std_ratio": 1.2,
+                "estimate_normals": True
+            },
+            "output": {
+                "output_dir": "data/output/hk_real_output",
+                "pointcloud_ply": args.output_ply or "reconstructed_pointcloud_great.ply"
+            }
+        }
+        reconstructor = StereoReconstructor(cfg)
+        reconstructor.run()
+        return
+
     calib_npz = str(PROJECT_ROOT / "data" / "calibration_results" / "stereo_calib_params.npz")
     if not os.path.exists(calib_npz):
         print(f"[Error] 未找到高速标定缓存 {calib_npz}，请先运行: python main.py --calibrate")
@@ -180,9 +214,10 @@ def main():
     track_p.add_argument("--right", type=str, default=None, help="单帧右图路径")
 
     # 3. 稠密重建命令
-    recon_p = subparsers.add_parser("reconstruct", help="执行 SGBM 稠密点云重建")
+    recon_p = subparsers.add_parser("reconstruct", help="执行双目稠密三维点云重建 (SGBM 或 GREAT-Stereo)")
     recon_p.add_argument("--left", type=str, required=True, help="待测左图路径")
     recon_p.add_argument("--right", type=str, required=True, help="待测右图路径")
+    recon_p.add_argument("--matcher", "-m", choices=["sgbm", "great"], default="great", help="立体匹配算法 (默认: great 深度学习，可选 sgbm)")
     recon_p.add_argument("--output-ply", type=str, default="reconstructed_pointcloud.ply", help="输出点云文件名 (默认: reconstructed_pointcloud.ply)")
 
     # 4. 单元测试命令

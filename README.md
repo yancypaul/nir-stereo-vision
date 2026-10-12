@@ -1,5 +1,6 @@
 # 近红外双目手术导航追踪与三维视觉系统 (NIR Stereo Vision System)
 
+面向医疗外科手术导航（骨科 / 神经外科）的高精度近红外（NIR）双目光学追踪系统，采用 **NDI Polaris / SciKit-Surgery** 同款亚像素光斑提取、极线立体几何三角交会与 Kabsch/Arun's SVD 6-DoF 刚体位姿估计路线。
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-brightgreen.svg)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-orange.svg)](https://pytorch.org/)
@@ -9,8 +10,20 @@
 
 ---
 
+## 🌟 核心特性 (Key Features)
 ## 🌟 核心特性与技术架构 (Key Features)
 
+1. **医疗级光学追踪管线**:
+   - **亚像素提取**: 灰度加权质心法（Intensity-Weighted Centroid），斑点定位精度达 0.02 像素。
+   - **极线三角交会**: 空间立体交会解算标记球毫米级 3D 绝对坐标。
+   - **刚体位姿估计**: 基于 SVD 的 Kabsch 算法，自动求解手术器械 6-DoF 位姿 $[R|T]$，并推算针尖/刀尖（Tool-Tip）空间坐标。
+   - **自适应排列匹配**: 自动处理视场中反光球乱序问题，实时输出配准残差（FRE）。
+2. **软硬件彻底解耦（HAL 架构）**:
+   - **宿舍离线开发 (Mock)**: 支持直接回放 Blender 物理仿真渲染图或录制序列。
+   - **实验室实机联调 (Hikrobot)**: 深度封装海康威视（Hikrobot MVS）双目黑白工业相机，配置微秒级低曝光过滤可见光环境杂波。
+3. **Blender 数字孪生实验室**:
+   - 自动生成 11x9 20mm 物理标定板并批量渲染 12 组多姿态标定图对。
+   - 提供 4 标记球探针物理仿真环境与绝对真值（Ground Truth）闭环精度评估。
 ### 1. 深度学习 SOTA 三维稠密点云重建 (GREAT-Stereo ICCV 2025)
 - **内嵌前沿模型**：仓库直接内嵌整合了 ICCV 2025 前沿立体匹配模型 **GREAT-Stereo**（基于全局循环注意力与多尺度代价体），位于 `third_party/GREAT-Stereo`。
 - **全稠密视差覆盖**：攻克传统匹配算法在白墙、平整台面、橱柜等弱纹理区域的视差空洞缺陷，实机测试达成 **100% 全稠密视差**覆盖，单帧重构 **125.6 万点**真实点云。
@@ -28,10 +41,19 @@
 
 ---
 
+## 📁 工程目录架构 (Project Structure)
 ## 📁 协同开发代码目录结构 (Project Directory Structure)
 
 ```text
 nir-stereo-vision/
+├── configs/                            # [配置中心] 统一管理所有硬件、算法与器械参数
+│   ├── calibration/                    # 标定结果 (受 Git 跟踪)
+│   │   └── stereo_calib_params.json    # 相机内参、畸变、基线与极线校正投影矩阵
+│   ├── cameras/                        # 相机硬件配置
+│   │   ├── hikrobot_dual_mono.json     # 海康工业相机实机配置 (Mono8, 5000μs 曝光)
+│   │   └── mock_camera.json            # 仿真回放相机参数
+│   └── tools/                          # 手术器械 CAD 刚体几何定义
+│       └── probe_4marker.json          # 4球探针局部坐标与针尖偏置
 ├── configs/                            # [配置中心] 统一管理硬件、算法与器械配置
 │   ├── calibration/                    # 标定结果配置文件
 │   │   └── stereo_calib_params.json    # 实测相机内参、畸变、基线与校正矩阵
@@ -42,6 +64,10 @@ nir-stereo-vision/
 │       └── probe_4marker.json          # 4 标记球局部坐标与针尖偏置
 │
 ├── src/                                # [核心源码库]
+│   ├── camera/                         # 硬件抽象层 (Base, Hik, Mock)
+│   ├── calibration/                    # 双目相机几何标定算法
+│   ├── tracking/                       # 核心：手术器械高精度追踪与 SVD 解算
+│   └── stereo/                         # (备用) 稠密视差与点云重建
 │   ├── camera/                         # 相机硬件抽象层 (Base, Hikrobot MVS, Mock)
 │   ├── calibration/                    # 张友祥标定法与极线校正算法
 │   ├── tracking/                       # 近红外多球提取、立体交会与 SVD 刚体配准
@@ -50,6 +76,8 @@ nir-stereo-vision/
 │       ├── reconstructor.py            # 通用工业级点云重建引擎
 │       └── stereo_matcher.py           # 传统 SGBM-HH + WLS 重建流水线
 │
+├── scripts/                            # [实用工具与仿真脚本]
+│   └── blender/                        # Blender 自动化生成与批量渲染脚本
 ├── third_party/                        # [第三方算法库] (开箱即用，协作无门槛)
 │   └── GREAT-Stereo/                   # ICCV 2025 SOTA 深度立体匹配网络
 │       ├── models/                     # 神经网络结构 (GREAT-Stereo, IGEV)
@@ -67,9 +95,15 @@ nir-stereo-vision/
 │   └── 每周总结1.docx                  # 阶段综合技术总结报告 (严格国标排版、实测数据)
 │
 ├── tests/                              # [自动化单元测试]
+│   ├── test_svd_registration.py        # Kabsch 算法与乱序排列测试
+│   └── test_optical_tracker.py         # 亚像素斑点提取与流水线测试
 │   ├── test_svd_registration.py        # Kabsch 刚体配准与乱序匹配测试
 │   └── test_optical_tracker.py         # 亚像素斑点提取测试
 │
+├── data/                               # [本地数据] (被 .gitignore 排除，防仓库膨胀)
+├── main.py                             # 统一系统入口终端
+├── requirements.txt                    # 依赖清单
+└── README.md                           # 工程说明
 ├── data/                               # [本地数据与产物] (点云输出位于 data/output/)
 ├── run_reconstruction.py               # 通用三维点云重建便捷执行入口
 ├── main.py                             # 统一系统终端入口 (标定/追踪/重建/测试)
@@ -79,29 +113,41 @@ nir-stereo-vision/
 
 ---
 
+## 🚀 快速上手 (Quick Start)
 ## 🛠️ 环境准备与快速上手 (Quick Start)
 
+### 1. 安装依赖
 ### 1. 克隆代码仓库 (Clone)
 本仓库已将核心桥梁代码、标定参数与 GREAT-Stereo 模型网络直接包含，克隆后即可直接运行：
 ```bash
+pip install -r requirements.txt
 git clone https://github.com/yancypaul/nir-stereo-vision.git
 cd nir-stereo-vision
 ```
 
+### 2. 运行单元测试
 ### 2. 配置 Python 环境与安装依赖
 推荐使用 Python 3.10+ 及 Conda 虚拟环境：
 ```bash
+python main.py test
+```
 # 创建虚拟环境
 conda create -n stereo python=3.10 -y
 conda activate stereo
 
+### 3. 执行双目相机立体标定
+```bash
+python main.py calibrate
 # 安装基础依赖
 pip install -r requirements.txt
 
 # 如需使用 GPU 运行 GREAT-Stereo，请根据本机 CUDA 版本安装 PyTorch (推荐 CUDA 12.1+):
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
 ```
+标定参数将自动更新写入 `configs/calibration/stereo_calib_params.json`。
 
+### 4. 运行手术器械近红外追踪
+- **模式 A：宿舍离线回放/仿真测试**
 ### 3. 一键运行三维点云重建 (3D Reconstruction)
 
 - **使用最新深度学习 GREAT-Stereo 引擎（推荐，弱纹理无空洞）：**
@@ -121,13 +167,16 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
   ```bash
   python main.py track --camera mock
   ```
+- **模式 B：实验室海康实机联调**
 - **实验室海康工业相机实机联调 (Hik 模式)：**
   ```bash
   python main.py track --camera hik
   ```
 
+### 5. 稠密三维点云重建 (SGBM)
 ### 5. 执行双目立体几何标定 (Calibration)
 ```bash
+python main.py reconstruct --left data/calibration_images/left_01.png --right data/calibration_images/right_01.png
 python main.py calibrate --images-dir data/calibration_images
 ```
 解算完成的内参矩阵、畸变系数与外参基线将自动保存至 `configs/calibration/stereo_calib_params.json`。
